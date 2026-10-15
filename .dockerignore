@@ -1,0 +1,13 @@
+.git
+.venv
+.env
+.env.*
+.idea
+.agents
+.codex
+.aws
+__pycache__
+.pytest_cache
+.ruff_cache
+tests
+td.txt

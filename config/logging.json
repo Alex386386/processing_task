@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "disable_existing_loggers": false,
+  "formatters": {
+    "simple": {
+      "format": "[%(asctime)s] [%(name)s] [%(levelname)s] - %(message)s",
+      "datefmt": "%Y-%m-%d %H:%M:%S"
+    }
+  },
+  "handlers": {
+    "console": {
+      "class": "logging.StreamHandler",
+      "level": "INFO",
+      "formatter": "simple",
+      "stream": "ext://sys.stdout"
+    }
+  },
+  "root": {
+    "level": "INFO",
+    "handlers": ["console"]
+  },
+  "loggers": {
+    "adapters": {
+      "level": "INFO",
+      "propagate": true
+    },
+    "domain": {
+      "level": "INFO",
+      "propagate": true
+    },
+    "entrypoints": {
+      "level": "INFO",
+      "propagate": true
+    },
+    "services": {
+      "level": "INFO",
+      "propagate": true
+    },
+    "uvicorn": {
+      "level": "INFO",
+      "propagate": true
+    },
+    "aio_pika": {
+      "level": "CRITICAL",
+      "propagate": true
+    },
+    "aiormq": {
+      "level": "CRITICAL",
+      "propagate": true
+    },
+    "httpx": {
+      "level": "CRITICAL",
+      "propagate": true
+    },
+    "httpcore": {
+      "level": "CRITICAL",
+      "propagate": true
+    },
+    "faststream": {
+      "level": "CRITICAL",
+      "propagate": true
+    }
+  }
+}

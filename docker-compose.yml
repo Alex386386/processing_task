@@ -1,0 +1,76 @@
+name: processing-task
+x-app: &app
+  build: .
+  environment: &environment
+    DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-payments}:${POSTGRES_PASSWORD:-payments-local-demo}@postgres:5432/${POSTGRES_DB:-payments}
+    RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-payments}:${RABBITMQ_DEFAULT_PASS:-rabbit-local-demo}@rabbitmq:5672/
+    API_KEY: ${API_KEY:-demo-api-key-change-me}
+    OUTBOX_POLL_INTERVAL: ${OUTBOX_POLL_INTERVAL:-1}
+    OUTBOX_BATCH_SIZE: ${OUTBOX_BATCH_SIZE:-100}
+    PAYMENT_PROCESSING_MIN_DELAY: ${PAYMENT_PROCESSING_MIN_DELAY:-2}
+    PAYMENT_PROCESSING_MAX_DELAY: ${PAYMENT_PROCESSING_MAX_DELAY:-5}
+    PAYMENT_SUCCESS_RATE: ${PAYMENT_SUCCESS_RATE:-0.9}
+    MESSAGE_MAX_ATTEMPTS: ${MESSAGE_MAX_ATTEMPTS:-3}
+    RETRY_BASE_DELAY: ${RETRY_BASE_DELAY:-1}
+    RETRY_MULTIPLIER: ${RETRY_MULTIPLIER:-2}
+    WEBHOOK_TIMEOUT: ${WEBHOOK_TIMEOUT:-10}
+    BROKER_TIMEOUT: ${BROKER_TIMEOUT:-5}
+  init: true
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-payments}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-payments-local-demo}
+      POSTGRES_DB: ${POSTGRES_DB:-payments}
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  rabbitmq:
+    image: rabbitmq:4.2-management-alpine
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-payments}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-rabbit-local-demo}
+    volumes: [rabbitmq_data:/var/lib/rabbitmq]
+    ports: ["127.0.0.1:15672:15672"]
+    healthcheck:
+      test: [CMD, rabbitmq-diagnostics, -q, ping]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  migrate:
+    <<: *app
+    restart: "no"
+    entrypoint: [python, -m]
+    command: [alembic, upgrade, head]
+    depends_on:
+      postgres: {condition: service_healthy}
+  api:
+    <<: *app
+    ports: ["127.0.0.1:8000:8000"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      rabbitmq: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, /usr/src/app/.venv/bin/python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/openapi.json', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  consumer:
+    <<: *app
+    entrypoint: [python, -m]
+    command: [entrypoints.workers.payment_worker]
+    stop_grace_period: 40s
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      rabbitmq: {condition: service_healthy}
+
+volumes:
+  postgres_data:
+  rabbitmq_data:

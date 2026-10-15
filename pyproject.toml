@@ -1,0 +1,49 @@
+[project]
+name = "processing-task"
+version = "0.1.0"
+description = "Asynchronous payments with transactional outbox"
+readme = "README.md"
+authors = [
+    { name = "Alex386386", email = "mamonov843@gmail.com" }
+]
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.34,<1",
+    "pydantic-settings>=2.8,<3",
+    "sqlalchemy[asyncio]>=2.0,<2.1",
+    "asyncpg>=0.30,<1",
+    "alembic>=1.15,<2",
+    "faststream[rabbit]>=0.6,<0.7",
+    "httpx>=0.28,<1",
+]
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "pytest-asyncio>=1,<2", "testcontainers>=4.14,<5", "ruff>=0.11,<1"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["src"]
+python_files = ["*_test.py"]
+markers = ["integration: requires isolated PostgreSQL and RabbitMQ"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+
+[project.scripts]
+processing-task = "entrypoints.app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/adapters", "src/domain", "src/entrypoints", "src/services"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/settings.py" = "settings.py"
